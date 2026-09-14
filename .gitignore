@@ -1,0 +1,23 @@
+# Virtual Environments
+venv/
+env/
+ENV/
+.env
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+*.sqlite3
+dimsum_dev.db
+
+# Flask uploads / static
+app/static/uploads/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
