@@ -48,5 +48,22 @@ def seed_products():
         db_session.commit()
         print("Database seeded with new Dimsum products!")
 
+        # Create Admin User
+        from app.modules.auth.models import User
+        from app.modules.auth.service import AuthService
+        
+        admin_email = 'admin@dimsum.id'
+        existing_admin = db_session.query(User).filter_by(email=admin_email).first()
+        if not existing_admin:
+            AuthService.register(
+                email=admin_email,
+                password='password123',
+                full_name='Super Admin',
+                role='admin'
+            )
+            print("Default admin user created: admin@dimsum.id / password123")
+        else:
+            print("Admin user already exists.")
+
 if __name__ == '__main__':
     seed_products()
