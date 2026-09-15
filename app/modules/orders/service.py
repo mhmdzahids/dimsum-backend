@@ -8,7 +8,7 @@ from app.modules.products.models import Product
 from app.modules.inventory.models import InventoryTransaction
 from app.shared.utils import utc_now
 
-DEFAULT_PACKAGING_FEE = 5000.0
+DEFAULT_PACKAGING_FEE = 0.0
 
 class OrderService:
     @staticmethod
