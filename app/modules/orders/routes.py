@@ -44,6 +44,10 @@ def get_order(order_id):
     if not order:
         return api_error('Order not found', 404)
         
+    # If order is pending_payment, poll Paywuz in real-time to check if payment was completed
+    if order.status == 'pending_payment':
+        order = OrderService.sync_order_payment_status(order)
+
     return api_success(data=order.to_dict())
 
 @orders_bp.route('/verify', methods=['POST'])

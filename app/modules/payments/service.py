@@ -30,3 +30,22 @@ class PaywuzService:
             raise ValueError(f"Paywuz API Error: {e.code} - {err_body}")
         except Exception as e:
             raise ValueError(f"Failed to connect to Paywuz: {str(e)}")
+
+    @staticmethod
+    def get_transaction(transaction_id: str):
+        if not transaction_id or not Config.PAYWUZ_API_KEY:
+            return None
+            
+        url = f"{Config.PAYWUZ_API_URL}/transactions/{transaction_id}"
+        req = urllib.request.Request(url, method='GET')
+        req.add_header('Authorization', f'Bearer {Config.PAYWUZ_API_KEY}')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                res_body = response.read().decode('utf-8')
+                res_json = json.loads(res_body)
+                return res_json.get('data', res_json)
+        except Exception:
+            return None

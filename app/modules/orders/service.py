@@ -108,12 +108,24 @@ class OrderService:
             raise e
 
     @classmethod
-    def handle_payment_webhook(cls, order_id: str, status: str, payload: dict):
-        order = cls.get_by_id(order_id)
+    def handle_payment_webhook(cls, identifier: str, status: str, payload: dict):
+        # 1. Look up by Order ID
+        order = cls.get_by_id(identifier)
+        payment = None
+        
+        if order:
+            payment = db_session.query(Payment).filter_by(order_id=order.id).first()
+        else:
+            # 2. Look up by Paywuz gateway transaction ID
+            payment = db_session.query(Payment).filter(
+                (Payment.gateway_ref_id == identifier) | (Payment.order_id == identifier)
+            ).first()
+            if payment:
+                order = payment.order
+                
         if not order:
-            raise ValueError("Order not found")
+            raise ValueError(f"Order not found for identifier: {identifier}")
             
-        payment = db_session.query(Payment).filter_by(order_id=order_id).first()
         if not payment:
             raise ValueError("Payment record not found")
             
@@ -122,18 +134,54 @@ class OrderService:
         if payment.status == 'success':
             return order
             
-        if status.lower() in ['success', 'settlement']:
+        if status and status.lower() in ['success', 'settlement', 'settled', 'paid', 'capture']:
             payment.status = 'success'
             order.status = 'paid'
             order.paid_at = utc_now()
             # 256-bit cryptographically secure random token (43 chars)
-            order.qr_token = secrets.token_urlsafe(32)
+            if not order.qr_token:
+                order.qr_token = secrets.token_urlsafe(32)
             
-        elif status.lower() in ['failed', 'expired', 'cancelled']:
+        elif status and status.lower() in ['failed', 'expired', 'cancelled']:
             payment.status = 'failed'
             order.status = 'cancelled'
             
         db_session.commit()
+        return order
+
+    @classmethod
+    def sync_order_payment_status(cls, order):
+        """
+        Polls Paywuz API in real-time to check if a pending order has been settled.
+        Runs when the customer is on the OrderStatus page or clicks Refresh Status.
+        """
+        if not order or order.status != 'pending_payment':
+            return order
+
+        payment = db_session.query(Payment).filter_by(order_id=order.id).first()
+        if not payment:
+            return order
+
+        from app.modules.payments.service import PaywuzService
+        tx_data = None
+        if payment.gateway_ref_id:
+            tx_data = PaywuzService.get_transaction(payment.gateway_ref_id)
+            
+        if not tx_data:
+            tx_data = PaywuzService.get_transaction(order.id)
+
+        if tx_data and isinstance(tx_data, dict):
+            status = tx_data.get('status', '')
+            if status and status.lower() in ['success', 'settlement', 'settled', 'paid', 'capture']:
+                payment.status = 'success'
+                payment.raw_webhook_payload = tx_data
+                order.status = 'paid'
+                order.paid_at = utc_now()
+                if not order.qr_token:
+                    order.qr_token = secrets.token_urlsafe(32)
+                db_session.commit()
+                return order
+
         return order
 
     @classmethod
