@@ -11,6 +11,15 @@ class Config:
     
     PAYWUZ_API_KEY = os.environ.get('PAYWUZ_API_KEY', '')
     PAYWUZ_API_URL = os.environ.get('PAYWUZ_API_URL', 'https://api.paywuz.id/v1')
+    PAYWUZ_WEBHOOK_SECRET = os.environ.get('PAYWUZ_WEBHOOK_SECRET', '')
     
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('app', 'static', 'uploads', 'banners'))
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB limit
+
+    # Fail fast if in production and secrets are insecure
+    ENV = os.environ.get('FLASK_ENV', 'development')
+    if ENV == 'production':
+        if SECRET_KEY in ('default-secret-key', 'super-secret-dev-key-change-in-prod') or len(SECRET_KEY) < 32:
+            raise RuntimeError("CRITICAL: Insecure SECRET_KEY configured for production!")
+        if not PAYWUZ_WEBHOOK_SECRET:
+            raise RuntimeError("CRITICAL: PAYWUZ_WEBHOOK_SECRET must be set in production!")

@@ -31,8 +31,11 @@ class ProductService:
         db_session.commit()
         return new_product
 
+    ALLOWED_UPDATE_FIELDS = {'name', 'description', 'weight', 'category', 'price', 'sku', 'image_url', 'is_active'}
+
     @classmethod
     def update(cls, product_id: str, **kwargs):
+        import html
         product = cls.get_by_id(product_id)
         if not product:
             raise ValueError("Product not found")
@@ -42,7 +45,9 @@ class ProductService:
                 raise ValueError(f"Product with SKU '{kwargs['sku']}' already exists.")
                 
         for key, value in kwargs.items():
-            if hasattr(product, key):
+            if key in cls.ALLOWED_UPDATE_FIELDS and hasattr(product, key):
+                if isinstance(value, str) and key in {'name', 'description', 'weight', 'category'}:
+                    value = html.escape(value.strip(), quote=True)
                 setattr(product, key, value)
                 
         db_session.commit()

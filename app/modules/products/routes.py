@@ -58,7 +58,9 @@ def upload_product_image(product_id):
             return api_error(str(e), 404)
         return api_error(str(e), 400)
     except Exception as e:
-        return api_error(f'Upload failed: {str(e)}', 500)
+        import logging
+        logging.getLogger(__name__).exception("Product image upload failed")
+        return api_error('Upload failed due to an internal server error', 500)
 
 @products_bp.route('/<product_id>', methods=['PUT'])
 @admin_required

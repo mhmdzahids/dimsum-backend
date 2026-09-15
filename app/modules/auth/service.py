@@ -19,12 +19,18 @@ class AuthService:
     @staticmethod
     def generate_token(user_id: str, role: str) -> str:
         payload = {
+            'sub': user_id,
             'user_id': user_id,
             'role': role,
-            'exp': datetime.now(timezone.utc) + timedelta(days=7),
+            'exp': datetime.now(timezone.utc) + timedelta(minutes=30),
             'iat': datetime.now(timezone.utc)
         }
         return jwt.encode(payload, Config.SECRET_KEY, algorithm='HS256')
+
+    @staticmethod
+    def revoke_token(token: str):
+        from app.core.security import revoke_token
+        revoke_token(token)
 
     @classmethod
     def register(cls, email: str, password: str, full_name: str, role: str = 'customer'):

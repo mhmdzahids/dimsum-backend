@@ -1,7 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from app.core.limiter import limiter
 from app.core.config import Config
 from app.core.db import init_db, teardown_session
 from app.core.errors import register_error_handlers
@@ -11,8 +10,13 @@ def create_app():
     app.config.from_object(Config)
     
     # Extensions
-    CORS(app, resources={r"/api/*": {"origins": Config.ALLOWED_ORIGINS}})
-    limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="memory://")
+    CORS(app, resources={r"/api/*": {
+        "origins": Config.ALLOWED_ORIGINS,
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Authorization", "Content-Type", "X-Webhook-Signature"],
+        "max_age": 3600
+    }})
+    limiter.init_app(app)
     
     # Database
     init_db(app)
@@ -24,6 +28,14 @@ def create_app():
     # Security headers
     @app.after_request
     def set_security_headers(response):
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: https: blob:; "
+            "connect-src 'self' https://api.paywuz.id;"
+        )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-XSS-Protection'] = '1; mode=block'

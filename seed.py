@@ -6,10 +6,11 @@ app = create_app()
 
 def seed_products():
     with app.app_context():
-        # Drop and recreate the products table to apply schema changes
-        engine = db_session.get_bind()
-        Product.__table__.drop(engine, checkfirst=True)
-        Product.__table__.create(engine)
+        # Only seed if no products exist
+        existing_count = db_session.query(Product).count()
+        if existing_count > 0:
+            print("Products already exist. Skipping product seeding.")
+            return
         
         prod1 = Product(
             name='Dimsum Mini (1 Pax Isi 25 Pcs)',
