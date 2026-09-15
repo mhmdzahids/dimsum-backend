@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 payments_bp = Blueprint('payments', __name__)
 
 def verify_webhook_signature(raw_body: bytes, headers: dict) -> bool:
-    secret = Config.PAYWUZ_WEBHOOK_SECRET
+    secret = Config.PAYWUZ_WEBHOOK_SECRET or Config.PAYWUZ_API_KEY
     if not secret:
         # In development if secret is not set, allow with warning
         if Config.ENV == 'development':
@@ -21,20 +21,26 @@ def verify_webhook_signature(raw_body: bytes, headers: dict) -> bool:
             return True
         return False
 
-    # Check X-Webhook-Signature or Authorization / X-Webhook-Secret header
+    # 1. Check X-Webhook-Signature or X-Signature header (HMAC SHA256)
     received_sig = headers.get('X-Webhook-Signature') or headers.get('X-Signature')
     if received_sig:
         expected_sig = hmac.new(secret.encode('utf-8'), raw_body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected_sig, received_sig)
 
+    # 2. Check Authorization Bearer token
     auth_header = headers.get('Authorization', '')
     if auth_header.startswith('Bearer '):
         token = auth_header.split(' ')[1]
         return hmac.compare_digest(secret, token)
 
-    secret_header = headers.get('X-Webhook-Secret')
+    # 3. Check X-Webhook-Secret or X-Api-Key header
+    secret_header = headers.get('X-Webhook-Secret') or headers.get('X-Api-Key')
     if secret_header:
         return hmac.compare_digest(secret, secret_header)
+
+    # 4. In development, allow if neither is provided
+    if Config.ENV == 'development':
+        return True
 
     return False
 
