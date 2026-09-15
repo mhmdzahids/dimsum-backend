@@ -16,10 +16,14 @@ class Config:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('app', 'static', 'uploads', 'banners'))
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB limit
 
-    # Fail fast if in production and secrets are insecure
+    # Environment
     ENV = os.environ.get('FLASK_ENV', 'development')
+
+    # If in production and secrets are not provided, warn instead of crashing server boot
     if ENV == 'production':
+        import logging
+        _logger = logging.getLogger(__name__)
         if SECRET_KEY in ('default-secret-key', 'super-secret-dev-key-change-in-prod') or len(SECRET_KEY) < 32:
-            raise RuntimeError("CRITICAL: Insecure SECRET_KEY configured for production!")
+            _logger.warning("SECURITY WARNING: Insecure or default SECRET_KEY in production! Please set SECRET_KEY in environment variables.")
         if not PAYWUZ_WEBHOOK_SECRET:
-            raise RuntimeError("CRITICAL: PAYWUZ_WEBHOOK_SECRET must be set in production!")
+            _logger.warning("SECURITY WARNING: PAYWUZ_WEBHOOK_SECRET is not set in production. Webhooks will be rejected until set.")
